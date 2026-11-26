@@ -253,6 +253,15 @@ body {
   font-weight: 600;
 }
 
+.recaptcha-wrap {
+  margin: 0 0 1.25rem;
+}
+
+.recaptcha-hint {
+  margin: 0 0 0.65rem;
+  font-size: 0.92rem;
+}
+
 .oauth-list {
   list-style: none;
   margin: 0;

@@ -55,6 +55,9 @@ services:
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
       FACEBOOK_CALLBACK_URL: ${FACEBOOK_CALLBACK_URL:-http://localhost:3001/auth/facebook/callback}
+      RECAPTCHA_SITE_KEY: ${RECAPTCHA_SITE_KEY:-}
+      RECAPTCHA_SECRET_KEY: ${RECAPTCHA_SECRET_KEY:-}
+      RECAPTCHA_DISABLED: ${RECAPTCHA_DISABLED:-false}
     ports:
       - '${API_PORT:-3001}:3001'
     healthcheck:
