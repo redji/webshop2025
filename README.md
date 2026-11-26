@@ -78,19 +78,43 @@ Use these exact callback URLs in each provider console (local Docker / `npm run 
 
 Placeholders like `your-google-client-id` are treated as **not configured**; those provider buttons stay disabled until real values are set.
 
+## Google reCAPTCHA (Account / OAuth)
+
+OAuth start is gated by **reCAPTCHA v2 Checkbox**. The Account page shows the checkbox; provider buttons stay disabled until it succeeds. The API verifies the token with Google’s `siteverify` endpoint **before** issuing the OAuth redirect. Missing or invalid tokens are rejected (HTTP 403).
+
+### Console setup (Michał)
+
+1. Open [Google reCAPTCHA admin](https://www.google.com/recaptcha/admin).
+2. Create a site: label e.g. `webshop2025`, type **reCAPTCHA v2** → **“I’m not a robot” Checkbox**.
+3. Add domains: `localhost` (and your staging/production host when ready).
+4. Copy **Site key** → `RECAPTCHA_SITE_KEY` and **Secret key** → `RECAPTCHA_SECRET_KEY` in root `.env` / `backend/.env` (Compose reads the root `.env`).
+5. Rebuild/restart API after changing keys: `docker compose up --build api` (or restart `npm run dev:api`).
+
+### Fail-closed vs local disable
+
+| Situation                   | Behavior                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| Keys set                    | Captcha required; server verifies every OAuth start                            |
+| Keys missing / placeholders | OAuth start **rejected** (fail closed) — Docker `NODE_ENV=production` included |
+| `RECAPTCHA_DISABLED=true`   | Captcha skipped (local/dev escape hatch only — never for real deployments)     |
+
+Do **not** commit real keys. Placeholders `your-recaptcha-*` count as unset.
+
 ### Auth API routes
 
-| Method | Path                       | Purpose                                       |
-| ------ | -------------------------- | --------------------------------------------- |
-| GET    | `/auth/providers`          | Providers with real credentials configured    |
-| GET    | `/auth/google`             | Start Google OAuth                            |
-| GET    | `/auth/google/callback`    | Google callback → set cookie → `/account`     |
-| GET    | `/auth/microsoft`          | Start Microsoft OAuth                         |
-| GET    | `/auth/microsoft/callback` | Microsoft callback                            |
-| GET    | `/auth/facebook`           | Start Facebook OAuth                          |
-| GET    | `/auth/facebook/callback`  | Facebook callback                             |
-| GET    | `/auth/me`                 | Current user (`{ user }` or `{ user: null }`) |
-| POST   | `/auth/logout`             | Revoke session + clear cookie                 |
+| Method | Path                       | Purpose                                                       |
+| ------ | -------------------------- | ------------------------------------------------------------- |
+| GET    | `/auth/providers`          | Configured providers + `{ recaptcha: { required, siteKey } }` |
+| GET    | `/auth/google`             | Start Google OAuth (requires verified reCAPTCHA when enabled) |
+| GET    | `/auth/google/callback`    | Google callback → set cookie → `/account`                     |
+| GET    | `/auth/microsoft`          | Start Microsoft OAuth (reCAPTCHA when enabled)                |
+| GET    | `/auth/microsoft/callback` | Microsoft callback                                            |
+| GET    | `/auth/facebook`           | Start Facebook OAuth (reCAPTCHA when enabled)                 |
+| GET    | `/auth/facebook/callback`  | Facebook callback                                             |
+| GET    | `/auth/me`                 | Current user (`{ user }` or `{ user: null }`)                 |
+| POST   | `/auth/logout`             | Revoke session + clear cookie                                 |
+
+Pass the checkbox token as query `?recaptchaToken=…` (or header `x-recaptcha-token`) on OAuth **start** routes. Callbacks are unchanged.
 
 CORS is locked to `FRONTEND_URL` with `credentials: true` so the storefront can call `/auth/me` with cookies.
 
@@ -125,16 +149,19 @@ Do **not** commit `SONAR_TOKEN` or other secrets. `.env` is gitignored.
 
 Root `.env.example` covers Compose (including OAuth + `SONAR_*`). App-specific samples live in `backend/.env.example` and `frontend/.env.example`. Do not commit real secrets.
 
-| Variable              | Role                                                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_API_URL` | Browser-facing API URL (baked into the web client at image build; default `http://localhost:3001`) |
-| `API_URL`             | Server-side URL for Next.js RSC fetches inside Compose (default `http://api:3001`)                 |
-| `FRONTEND_URL`        | Storefront origin for CORS and OAuth redirect (default `http://localhost:3000`)                    |
-| `GOOGLE_*`            | Google OAuth client ID/secret/callback                                                             |
-| `MICROSOFT_*`         | Microsoft identity platform client ID/secret/tenant/callback                                       |
-| `FACEBOOK_*`          | Facebook Login app ID/secret/callback                                                              |
-| `COOKIE_SECURE`       | Set `true` behind HTTPS                                                                            |
-| `COOKIE_SAME_SITE`    | Default `lax` (works for localhost:3000 → :3001)                                                   |
+| Variable               | Role                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL`  | Browser-facing API URL (baked into the web client at image build; default `http://localhost:3001`) |
+| `API_URL`              | Server-side URL for Next.js RSC fetches inside Compose (default `http://api:3001`)                 |
+| `FRONTEND_URL`         | Storefront origin for CORS and OAuth redirect (default `http://localhost:3000`)                    |
+| `GOOGLE_*`             | Google OAuth client ID/secret/callback                                                             |
+| `MICROSOFT_*`          | Microsoft identity platform client ID/secret/tenant/callback                                       |
+| `FACEBOOK_*`           | Facebook Login app ID/secret/callback                                                              |
+| `RECAPTCHA_SITE_KEY`   | Google reCAPTCHA v2 site key (public; returned by `/auth/providers`)                               |
+| `RECAPTCHA_SECRET_KEY` | Google reCAPTCHA v2 secret (API-only; used for siteverify)                                         |
+| `RECAPTCHA_DISABLED`   | `true` skips captcha for local/dev only (default `false` — fail closed)                            |
+| `COOKIE_SECURE`        | Set `true` behind HTTPS                                                                            |
+| `COOKIE_SAME_SITE`     | Default `lax` (works for localhost:3000 → :3001)                                                   |
 
 ## GitLab CI
 

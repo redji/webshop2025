@@ -3,8 +3,10 @@ import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
+import { RecaptchaService } from './recaptcha.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ProviderConfiguredGuard } from './guards/provider-configured.guard';
+import { RecaptchaGuard } from './guards/recaptcha.guard';
 import { SessionGuard } from './guards/session.guard';
 import { SESSION_COOKIE, type PublicUser } from './types';
 import type { User } from './entities/user.entity';
@@ -13,16 +15,20 @@ import type { User } from './entities/user.entity';
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly recaptcha: RecaptchaService,
     private readonly config: ConfigService,
   ) {}
 
   @Get('providers')
   listProviders() {
-    return { providers: this.authService.getConfiguredProviders() };
+    return {
+      providers: this.authService.getConfiguredProviders(),
+      recaptcha: this.recaptcha.getPublicConfig(),
+    };
   }
 
   @Get('google')
-  @UseGuards(ProviderConfiguredGuard('google'), AuthGuard('google'))
+  @UseGuards(RecaptchaGuard, ProviderConfiguredGuard('google'), AuthGuard('google'))
   googleStart() {
     // Passport redirects to Google.
   }
@@ -34,7 +40,7 @@ export class AuthController {
   }
 
   @Get('microsoft')
-  @UseGuards(ProviderConfiguredGuard('microsoft'), AuthGuard('microsoft'))
+  @UseGuards(RecaptchaGuard, ProviderConfiguredGuard('microsoft'), AuthGuard('microsoft'))
   microsoftStart() {
     // Passport redirects to Microsoft.
   }
@@ -46,7 +52,7 @@ export class AuthController {
   }
 
   @Get('facebook')
-  @UseGuards(ProviderConfiguredGuard('facebook'), AuthGuard('facebook'))
+  @UseGuards(RecaptchaGuard, ProviderConfiguredGuard('facebook'), AuthGuard('facebook'))
   facebookStart() {
     // Passport redirects to Facebook.
   }

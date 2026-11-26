@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { RecaptchaService } from './recaptcha.service';
 import { SESSION_COOKIE } from './types';
 import type { User } from './entities/user.entity';
 
@@ -14,6 +15,9 @@ describe('AuthController', () => {
     createSession: jest.fn(),
     revokeSession: jest.fn(),
   };
+  const recaptchaService = {
+    getPublicConfig: jest.fn(() => ({ required: true, siteKey: 'site-key' })),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -21,6 +25,7 @@ describe('AuthController', () => {
       controllers: [AuthController],
       providers: [
         { provide: AuthService, useValue: authService },
+        { provide: RecaptchaService, useValue: recaptchaService },
         {
           provide: ConfigService,
           useValue: {
@@ -38,8 +43,11 @@ describe('AuthController', () => {
     controller = module.get(AuthController);
   });
 
-  it('lists configured providers', () => {
-    expect(controller.listProviders()).toEqual({ providers: ['google'] });
+  it('lists configured providers and reCAPTCHA config', () => {
+    expect(controller.listProviders()).toEqual({
+      providers: ['google'],
+      recaptcha: { required: true, siteKey: 'site-key' },
+    });
   });
 
   it('returns null user when no session exists for /me', async () => {

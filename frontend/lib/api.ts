@@ -16,6 +16,16 @@ export type AuthUser = {
   avatarUrl: string | null;
 };
 
+export type RecaptchaPublicConfig = {
+  required: boolean;
+  siteKey: string | null;
+};
+
+export type AuthProvidersResponse = {
+  providers: AuthProvider[];
+  recaptcha: RecaptchaPublicConfig;
+};
+
 /**
  * Resolve the API base URL for the current runtime.
  * Prefer API_URL when set (Compose injects http://api:3001 for RSC). That env
@@ -47,7 +57,7 @@ export async function fetchProducts(): Promise<Product[]> {
   return response.json() as Promise<Product[]>;
 }
 
-export async function fetchAuthProviders(): Promise<AuthProvider[]> {
+export async function fetchAuthProviders(): Promise<AuthProvidersResponse> {
   const response = await fetch(`${getBrowserApiBaseUrl()}/auth/providers`, {
     credentials: 'include',
     cache: 'no-store',
@@ -55,8 +65,11 @@ export async function fetchAuthProviders(): Promise<AuthProvider[]> {
   if (!response.ok) {
     throw new Error(`Failed to load auth providers (${response.status})`);
   }
-  const data = (await response.json()) as { providers: AuthProvider[] };
-  return data.providers;
+  const data = (await response.json()) as Partial<AuthProvidersResponse>;
+  return {
+    providers: data.providers ?? [],
+    recaptcha: data.recaptcha ?? { required: false, siteKey: null },
+  };
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
@@ -81,6 +94,11 @@ export async function logout(): Promise<void> {
   }
 }
 
-export function oauthStartUrl(provider: AuthProvider): string {
-  return `${getBrowserApiBaseUrl()}/auth/${provider}`;
+export function oauthStartUrl(provider: AuthProvider, recaptchaToken?: string | null): string {
+  const base = `${getBrowserApiBaseUrl()}/auth/${provider}`;
+  if (!recaptchaToken) {
+    return base;
+  }
+  const params = new URLSearchParams({ recaptchaToken });
+  return `${base}?${params.toString()}`;
 }

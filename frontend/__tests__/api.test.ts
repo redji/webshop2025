@@ -40,5 +40,8 @@ describe('getApiBaseUrl', () => {
     process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3001';
     expect(getBrowserApiBaseUrl()).toBe('http://localhost:3001');
     expect(oauthStartUrl('google')).toBe('http://localhost:3001/auth/google');
+    expect(oauthStartUrl('google', 'tok')).toBe(
+      'http://localhost:3001/auth/google?recaptchaToken=tok',
+    );
   });
 });
