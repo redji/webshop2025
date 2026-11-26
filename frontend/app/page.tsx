@@ -1,6 +1,10 @@
 import { ProductList } from '@/components/ProductList';
 import { fetchProducts, type Product } from '@/lib/api';
 
+// Fetch at request time so Docker SSR can use runtime API_URL (compose network).
+// Build-time static generation would call localhost and bake a failed catalog.
+export const dynamic = 'force-dynamic';
+
 export default async function HomePage() {
   let products: Product[] = [];
   let error: string | null = null;

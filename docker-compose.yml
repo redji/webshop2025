@@ -44,6 +44,16 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-webshop}:${RABBITMQ_PASSWORD:-webshop}@rabbitmq:5672
     ports:
       - '${API_PORT:-3001}:3001'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(\"http://127.0.0.1:3001/health\").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,13 +65,17 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
+        # Browser-facing URL (baked into client bundle at image build).
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+      # Server-side RSC fetches use the Compose DNS name (not localhost).
+      API_URL: ${API_URL:-http://api:3001}
     ports:
       - '${WEB_PORT:-3000}:3000'
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   # Local SonarQube Community Build (profile: sonar).
   # Uses embedded H2 for local/dev trial only — not for production.

@@ -19,12 +19,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
-| Service     | URL                                            |
-| ----------- | ---------------------------------------------- |
-| Storefront  | http://localhost:3000                          |
-| API health  | http://localhost:3001/health                   |
-| Products    | http://localhost:3001/products                 |
-| RabbitMQ UI | http://localhost:15672 (`webshop` / `webshop`) |
+| Service     | URL                                             |
+| ----------- | ----------------------------------------------- |
+| Storefront  | http://localhost:3000                           |
+| API health  | http://localhost:3001/health                    |
+| Products    | http://localhost:3001/products                  |
+| RabbitMQ UI | http://localhost:15672 (`webshop` / `webshop`)  |
 | SonarQube   | http://localhost:9000 (Compose profile `sonar`) |
 
 ## Local development
@@ -80,21 +80,26 @@ Do **not** commit `SONAR_TOKEN` or other secrets. `.env` is gitignored.
 
 Root `.env.example` covers Compose (including `SONAR_HOST_URL` / `SONAR_PORT` / `SONAR_TOKEN`). App-specific samples live in `backend/.env.example` and `frontend/.env.example`. Do not commit real secrets.
 
+| Variable              | Role                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL` | Browser-facing API URL (baked into the web client at image build; default `http://localhost:3001`) |
+| `API_URL`             | Server-side URL for Next.js RSC fetches inside Compose (default `http://api:3001`)                 |
+
 ## GitLab CI
 
 Pipeline stages: lint → test → Sonar → Docker build/push → manual staging deploy.
 
 Set these CI/CD variables when mirroring to GitLab:
 
-| Variable              | Purpose                                                      |
-| --------------------- | ------------------------------------------------------------ |
-| `SONAR_HOST_URL`      | SonarQube URL (local Docker: `http://localhost:9000`)        |
-| `SONAR_TOKEN`         | Analysis token (masked) — same name as local `.env.example`  |
-| `NEXT_PUBLIC_API_URL` | Public API URL baked into the web image                      |
-| `DEPLOY_HOST`         | Staging SSH host                                             |
-| `DEPLOY_USER`         | Staging SSH user                                             |
-| `DEPLOY_SSH_KEY`      | Private key (masked + protected)                             |
-| `STAGING_URL`         | Optional environment URL                                     |
+| Variable              | Purpose                                                     |
+| --------------------- | ----------------------------------------------------------- |
+| `SONAR_HOST_URL`      | SonarQube URL (local Docker: `http://localhost:9000`)       |
+| `SONAR_TOKEN`         | Analysis token (masked) — same name as local `.env.example` |
+| `NEXT_PUBLIC_API_URL` | Public API URL baked into the web image                     |
+| `DEPLOY_HOST`         | Staging SSH host                                            |
+| `DEPLOY_USER`         | Staging SSH user                                            |
+| `DEPLOY_SSH_KEY`      | Private key (masked + protected)                            |
+| `STAGING_URL`         | Optional environment URL                                    |
 
 Built-in `CI_REGISTRY_*` is used when the GitLab Container Registry is enabled. Sonar and staging deploy skip cleanly when their variables are unset.
 
