@@ -4,7 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthModule } from './health/health.module';
 import { ProductsModule } from './products/products.module';
 import { MessagingModule } from './messaging/messaging.module';
+import { AuthModule } from './auth/auth.module';
 import { Product } from './products/product.entity';
+import { User } from './auth/entities/user.entity';
+import { Session } from './auth/entities/session.entity';
 
 @Module({
   imports: [
@@ -18,13 +21,14 @@ import { Product } from './products/product.entity';
         username: config.get<string>('DATABASE_USER', 'webshop'),
         password: config.get<string>('DATABASE_PASSWORD', 'webshop'),
         database: config.get<string>('DATABASE_NAME', 'webshop'),
-        entities: [Product],
+        entities: [Product, User, Session],
         synchronize: true,
       }),
     }),
     HealthModule,
     ProductsModule,
     MessagingModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

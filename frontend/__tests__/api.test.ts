@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '@/lib/api';
+import { getApiBaseUrl, getBrowserApiBaseUrl, oauthStartUrl } from '@/lib/api';
 
 describe('getApiBaseUrl', () => {
   const originalPublic = process.env.NEXT_PUBLIC_API_URL;
@@ -33,5 +33,12 @@ describe('getApiBaseUrl', () => {
     process.env.API_URL = 'http://api:3001';
     process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3001';
     expect(getApiBaseUrl()).toBe('http://api:3001');
+  });
+
+  it('keeps browser API URL on the public host (not Docker DNS)', () => {
+    process.env.API_URL = 'http://api:3001';
+    process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3001';
+    expect(getBrowserApiBaseUrl()).toBe('http://localhost:3001');
+    expect(oauthStartUrl('google')).toBe('http://localhost:3001/auth/google');
   });
 });
