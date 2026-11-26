@@ -6,8 +6,15 @@ export type Product = {
   inStock: boolean;
 };
 
+/**
+ * Resolve the API base URL for the current runtime.
+ * Prefer API_URL when set (Compose injects http://api:3001 for RSC). That env
+ * is not NEXT_PUBLIC_*, so it is absent from the browser bundle; clients fall
+ * back to NEXT_PUBLIC_API_URL (host-reachable, e.g. http://localhost:3001).
+ */
 export function getApiBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') || 'http://localhost:3001';
+  const raw = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  return raw.replace(/\/$/, '');
 }
 
 export async function fetchProducts(): Promise<Product[]> {
