@@ -12,6 +12,7 @@ COPY package.json next.config.ts tsconfig.json next-env.d.ts ./
 COPY app ./app
 COPY components ./components
 COPY lib ./lib
+COPY public ./public
 ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build
