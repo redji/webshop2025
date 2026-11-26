@@ -15,7 +15,11 @@
     "lint:fix": "eslint . --fix && prettier --write .",
     "test": "npm run test --workspaces --if-present",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "sonar:up": "docker compose --profile sonar up -d sonarqube",
+    "sonar:down": "docker compose --profile sonar stop sonarqube",
+    "sonar:scan": "docker compose --profile sonar run --rm sonar-scanner",
+    "sonar": "npm run sonar:up && npm run sonar:scan"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

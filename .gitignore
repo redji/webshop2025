@@ -35,6 +35,8 @@ Thumbs.db
 .nyc_output/
 .eslintcache
 .turbo/
+.sonar/
+.scannerwork/
 
 # Docker
 *.pid

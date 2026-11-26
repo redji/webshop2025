@@ -25,6 +25,7 @@ docker compose up --build
 | API health  | http://localhost:3001/health                   |
 | Products    | http://localhost:3001/products                 |
 | RabbitMQ UI | http://localhost:15672 (`webshop` / `webshop`) |
+| SonarQube   | http://localhost:9000 (Compose profile `sonar`) |
 
 ## Local development
 
@@ -39,15 +40,45 @@ npm run dev:web   # http://localhost:3000
 
 ### Scripts
 
-| Command         | Description                     |
-| --------------- | ------------------------------- |
-| `npm run lint`  | ESLint + Prettier check         |
-| `npm test`      | Backend + frontend unit tests   |
-| `npm run build` | Production builds for both apps |
+| Command              | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `npm run lint`       | ESLint + Prettier check                          |
+| `npm test`           | Backend + frontend unit tests                    |
+| `npm run build`      | Production builds for both apps                  |
+| `npm run sonar:up`   | Start local SonarQube Community (Docker profile) |
+| `npm run sonar:scan` | Run sonar-scanner-cli against local Sonar        |
+| `npm run sonar`      | Start SonarQube + run scanner                    |
+
+## SonarQube (local)
+
+Local analysis uses **SonarQube Community Build** via Docker (`sonarqube:community`). It is under Compose profile `sonar` so the app stack stays light by default.
+
+**Storage:** embedded **H2** (image default) for local/dev trial only — no dedicated Postgres. Data persists in the `sonarqube_data` named volume. Use an external DB for anything beyond a trial.
+
+```bash
+cp .env.example .env
+npm run sonar:up
+# Wait until http://localhost:9000 is up (first boot can take a minute+)
+# First login: admin / admin — change the password when prompted
+# My Account → Security → Generate Tokens → paste into SONAR_TOKEN in .env
+npm test          # optional: produce lcov for coverage import
+npm run sonar:scan
+```
+
+Equivalent Compose commands:
+
+```bash
+docker compose --profile sonar up -d sonarqube
+docker compose --profile sonar run --rm sonar-scanner
+```
+
+Project config: `sonar-project.properties` (`projectKey=webshop2025`, sources under `backend/src` + `frontend`, exclusions for `node_modules` / `dist` / `.next` / `coverage`).
+
+Do **not** commit `SONAR_TOKEN` or other secrets. `.env` is gitignored.
 
 ## Environment
 
-Root `.env.example` covers Compose. App-specific samples live in `backend/.env.example` and `frontend/.env.example`. Do not commit real secrets.
+Root `.env.example` covers Compose (including `SONAR_HOST_URL` / `SONAR_PORT` / `SONAR_TOKEN`). App-specific samples live in `backend/.env.example` and `frontend/.env.example`. Do not commit real secrets.
 
 ## GitLab CI
 
@@ -55,15 +86,15 @@ Pipeline stages: lint → test → Sonar → Docker build/push → manual stagin
 
 Set these CI/CD variables when mirroring to GitLab:
 
-| Variable              | Purpose                                 |
-| --------------------- | --------------------------------------- |
-| `SONAR_HOST_URL`      | SonarQube / SonarCloud URL              |
-| `SONAR_TOKEN`         | Analysis token (masked)                 |
-| `NEXT_PUBLIC_API_URL` | Public API URL baked into the web image |
-| `DEPLOY_HOST`         | Staging SSH host                        |
-| `DEPLOY_USER`         | Staging SSH user                        |
-| `DEPLOY_SSH_KEY`      | Private key (masked + protected)        |
-| `STAGING_URL`         | Optional environment URL                |
+| Variable              | Purpose                                                      |
+| --------------------- | ------------------------------------------------------------ |
+| `SONAR_HOST_URL`      | SonarQube URL (local Docker: `http://localhost:9000`)        |
+| `SONAR_TOKEN`         | Analysis token (masked) — same name as local `.env.example`  |
+| `NEXT_PUBLIC_API_URL` | Public API URL baked into the web image                      |
+| `DEPLOY_HOST`         | Staging SSH host                                             |
+| `DEPLOY_USER`         | Staging SSH user                                             |
+| `DEPLOY_SSH_KEY`      | Private key (masked + protected)                             |
+| `STAGING_URL`         | Optional environment URL                                     |
 
 Built-in `CI_REGISTRY_*` is used when the GitLab Container Registry is enabled. Sonar and staging deploy skip cleanly when their variables are unset.
 
