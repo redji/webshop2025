@@ -25,6 +25,8 @@ ENV HOSTNAME=0.0.0.0
 COPY --from=build /app/public ./public
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# Next.js writes route-cache / image-cache under .next at runtime; node must own /app.
+RUN chown -R node:node /app
 EXPOSE 3000
 USER node
 CMD ["node", "server.js"]
