@@ -1,0 +1,131 @@
+stages:
+  - lint
+  - test
+  - sonar
+  - build
+  - deploy
+
+variables:
+  NODE_VERSION: '20'
+  DOCKER_DRIVER: overlay2
+
+.node_base:
+  image: node:${NODE_VERSION}-bookworm
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+      - backend/node_modules/
+      - frontend/node_modules/
+  before_script:
+    - npm ci
+
+lint:
+  extends: .node_base
+  stage: lint
+  script:
+    - npm run lint
+
+test:
+  extends: .node_base
+  stage: test
+  script:
+    - npm test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    when: always
+    paths:
+      - backend/coverage/
+      - frontend/coverage/
+    expire_in: 1 week
+
+sonar:
+  stage: sonar
+  image:
+    name: sonarsource/sonar-scanner-cli:11
+    entrypoint: ['']
+  needs:
+    - test
+  variables:
+    SONAR_USER_HOME: '${CI_PROJECT_DIR}/.sonar'
+  cache:
+    key: '${CI_COMMIT_REF_SLUG}-sonar'
+    paths:
+      - .sonar/cache
+  script:
+    - |
+      if [ -z "${SONAR_TOKEN:-}" ] || [ -z "${SONAR_HOST_URL:-}" ]; then
+        echo "SONAR_TOKEN or SONAR_HOST_URL unset — skipping Sonar analysis"
+        exit 0
+      fi
+      sonar-scanner \
+        -Dsonar.host.url="${SONAR_HOST_URL}" \
+        -Dsonar.token="${SONAR_TOKEN}" \
+        -Dsonar.qualitygate.wait=true
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+.docker_build:
+  image: docker:27
+  services:
+    - docker:27-dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+
+build:api:
+  extends: .docker_build
+  stage: build
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHA" -t "$CI_REGISTRY_IMAGE/api:latest" ./backend
+    - docker push "$CI_REGISTRY_IMAGE/api:$CI_COMMIT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/api:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+build:web:
+  extends: .docker_build
+  stage: build
+  script:
+    - |
+      docker build \
+        --build-arg NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:3001}" \
+        -t "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA" \
+        -t "$CI_REGISTRY_IMAGE/web:latest" \
+        ./frontend
+    - docker push "$CI_REGISTRY_IMAGE/web:$CI_COMMIT_SHA"
+    - docker push "$CI_REGISTRY_IMAGE/web:latest"
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+deploy:staging:
+  stage: deploy
+  image: alpine:3.20
+  needs:
+    - build:api
+    - build:web
+  before_script:
+    - apk add --no-cache openssh-client
+    - |
+      if [ -z "${DEPLOY_HOST:-}" ] || [ -z "${DEPLOY_USER:-}" ] || [ -z "${DEPLOY_SSH_KEY:-}" ]; then
+        echo "Deploy variables unset — skipping staging deploy"
+        exit 0
+      fi
+    - eval $(ssh-agent -s)
+    - echo "$DEPLOY_SSH_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+  script:
+    - |
+      ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
+        "cd /opt/webshop2025 && docker compose pull && docker compose up -d"
+  environment:
+    name: staging
+    url: ${STAGING_URL}
+  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
