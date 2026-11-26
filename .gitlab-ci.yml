@@ -41,6 +41,8 @@ test:
       - frontend/coverage/
     expire_in: 1 week
 
+# Requires CI/CD variables SONAR_HOST_URL + SONAR_TOKEN (same names as local .env.example).
+# Local Docker Sonar uses SONAR_HOST_URL=http://localhost:9000; CI points at your server/cloud.
 sonar:
   stage: sonar
   image:
